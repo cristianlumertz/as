@@ -1,99 +1,59 @@
-package com.suaempresa.seuprojetoapi.service;
+// src/main/java/com/example/as_poo/service/FuncionarioService.java
+package com.example.as_poo.service;
 
-import com.suaempresa.seuprojetoapi.model.Empresa;
-import com.suaempresa.seuprojetoapi.model.Funcionario;
-import com.suaempresa.seuprojetoapi.repository.EmpresaRepository;
-import com.suaempresa.seuprojetoapi.repository.FuncionarioRepository;
+import com.example.as_poo.model.Empresa;
+import com.example.as_poo.model.Funcionario;
+import com.example.as_poo.repository.EmpresaRepository;
+import com.example.as_poo.repository.FuncionarioRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-
 import java.util.List;
 import java.util.Optional;
 
-/**
- * Camada de serviço para a entidade Funcionario.
- * Contém a lógica de negócio e interage com os repositórios.
- */
-@Service // Marca a classe como um componente de serviço
+@Service
 public class FuncionarioService {
 
-    @Autowired // Injeta uma instância de FuncionarioRepository
+    @Autowired
     private FuncionarioRepository funcionarioRepository;
 
-    @Autowired // Injeta uma instância de EmpresaRepository (necessário para associar funcionários a empresas)
+    @Autowired
     private EmpresaRepository empresaRepository;
 
-    /**
-     * Retorna todos os funcionários.
-     * @return Uma lista de todos os funcionários.
-     */
-    public List<Funcionario> findAll() {
+    public List<Funcionario> listarTodos() {
         return funcionarioRepository.findAll();
     }
 
-    /**
-     * Busca um funcionário pelo seu ID.
-     * @param id O ID do funcionário.
-     * @return Um Optional contendo o funcionário, se encontrado.
-     */
-    public Optional<Funcionario> findById(Long id) {
+    public Optional<Funcionario> buscarPorId(Long id) {
         return funcionarioRepository.findById(id);
     }
 
-    /**
-     * Salva um novo funcionário e o associa a uma empresa existente.
-     * @param empresaId O ID da empresa à qual o funcionário será associado.
-     * @param funcionario O funcionário a ser salvo.
-     * @return O funcionário salvo, ou null se a empresa não for encontrada.
-     */
-    public Funcionario save(Long empresaId, Funcionario funcionario) {
-        Optional<Empresa> optionalEmpresa = empresaRepository.findById(empresaId);
-        if (optionalEmpresa.isPresent()) {
-            Empresa empresa = optionalEmpresa.get();
-            funcionario.setEmpresa(empresa); // Associa o funcionário à empresa
-            return funcionarioRepository.save(funcionario);
-        } else {
-            // Lançar uma exceção personalizada seria uma prática melhor
-            return null; // Empresa não encontrada
-        }
+    public Funcionario salvar(Funcionario funcionario, Long empresaId) {
+        Empresa empresa = empresaRepository.findById(empresaId)
+                .orElseThrow(() -> new RuntimeException("Empresa não encontrada com o id " + empresaId));
+        funcionario.setEmpresa(empresa);
+        return funcionarioRepository.save(funcionario);
     }
 
-    /**
-     * Deleta um funcionário pelo seu ID.
-     * @param id O ID do funcionário a ser deletado.
-     */
-    public void deleteById(Long id) {
+    public Funcionario atualizar(Long id, Funcionario funcionarioAtualizado) {
+        return funcionarioRepository.findById(id)
+                .map(funcionario -> {
+                    funcionario.setNome(funcionarioAtualizado.getNome());
+                    funcionario.setCargo(funcionarioAtualizado.getCargo());
+                    // Opcional: permitir a mudança de empresa
+                    // if (funcionarioAtualizado.getEmpresa() != null && funcionarioAtualizado.getEmpresa().getId() != null) {
+                    //    Empresa novaEmpresa = empresaRepository.findById(funcionarioAtualizado.getEmpresa().getId())
+                    //            .orElseThrow(() -> new RuntimeException("Nova empresa não encontrada."));
+                    //    funcionario.setEmpresa(novaEmpresa);
+                    // }
+                    return funcionarioRepository.save(funcionario);
+                })
+                .orElseThrow(() -> new RuntimeException("Funcionário não encontrado com o id " + id));
+    }
+
+    public void deletar(Long id) {
+        if(!funcionarioRepository.existsById(id)){
+            throw new RuntimeException("Funcionário não encontrado com o id " + id);
+        }
         funcionarioRepository.deleteById(id);
-    }
-
-    /**
-     * Atualiza os detalhes de um funcionário existente.
-     * @param id O ID do funcionário a ser atualizado.
-     * @param funcionarioDetails Os novos detalhes do funcionário.
-     * @return O funcionário atualizado, ou null se não encontrado.
-     */
-    public Funcionario update(Long id, Funcionario funcionarioDetails) {
-        Optional<Funcionario> optionalFuncionario = funcionarioRepository.findById(id);
-        if (optionalFuncionario.isPresent()) {
-            Funcionario funcionario = optionalFuncionario.get();
-            funcionario.setNome(funcionarioDetails.getNome());
-            funcionario.setCargo(funcionarioDetails.getCargo());
-            funcionario.setSalario(funcionarioDetails.getSalario());
-            // A empresa do funcionário não é alterada por este método PUT,
-            // pois isso geralmente seria feito por um endpoint específico de associação/desassociação.
-            return funcionarioRepository.save(funcionario);
-        } else {
-            // Lançar uma exceção personalizada seria uma prática melhor
-            return null;
-        }
-    }
-
-    /**
-     * Busca todos os funcionários de uma empresa específica.
-     * @param empresaId O ID da empresa.
-     * @return Uma lista de funcionários da empresa.
-     */
-    public List<Funcionario> findByEmpresaId(Long empresaId) {
-        return funcionarioRepository.findByEmpresaId(empresaId);
     }
 }

@@ -1,75 +1,45 @@
-package com.suaempresa.seuprojetoapi.service;
+// src/main/java/com/example/as_poo/service/EmpresaService.java
+package com.example.as_poo.service;
 
-import com.suaempresa.seuprojetoapi.model.Empresa;
-import com.suaempresa.seuprojetoapi.repository.EmpresaRepository;
+import com.example.as_poo.model.Empresa;
+import com.example.as_poo.repository.EmpresaRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-
 import java.util.List;
 import java.util.Optional;
 
-/**
- * Camada de serviço para a entidade Empresa.
- * Contém a lógica de negócio e interage com o repositório.
- */
-@Service // Marca a classe como um componente de serviço
+@Service
 public class EmpresaService {
 
-    @Autowired // Injeta uma instância de EmpresaRepository
+    @Autowired
     private EmpresaRepository empresaRepository;
 
-    /**
-     * Retorna todas as empresas.
-     * @return Uma lista de todas as empresas.
-     */
-    public List<Empresa> findAll() {
+    public List<Empresa> listarTodas() {
         return empresaRepository.findAll();
     }
 
-    /**
-     * Busca uma empresa pelo seu ID.
-     * @param id O ID da empresa.
-     * @return Um Optional contendo a empresa, se encontrada.
-     */
-    public Optional<Empresa> findById(Long id) {
+    public Optional<Empresa> buscarPorId(Long id) {
         return empresaRepository.findById(id);
     }
 
-    /**
-     * Salva uma nova empresa ou atualiza uma existente.
-     * @param empresa A empresa a ser salva.
-     * @return A empresa salva/atualizada.
-     */
-    public Empresa save(Empresa empresa) {
+    public Empresa salvar(Empresa empresa) {
         return empresaRepository.save(empresa);
     }
 
-    /**
-     * Deleta uma empresa pelo seu ID.
-     * @param id O ID da empresa a ser deletada.
-     */
-    public void deleteById(Long id) {
-        empresaRepository.deleteById(id);
+    public Empresa atualizar(Long id, Empresa empresaAtualizada) {
+        return empresaRepository.findById(id)
+                .map(empresa -> {
+                    empresa.setNome(empresaAtualizada.getNome());
+                    empresa.setCnpj(empresaAtualizada.getCnpj());
+                    return empresaRepository.save(empresa);
+                })
+                .orElseThrow(() -> new RuntimeException("Empresa não encontrada com o id " + id));
     }
 
-    /**
-     * Atualiza os detalhes de uma empresa existente.
-     * @param id O ID da empresa a ser atualizada.
-     * @param empresaDetails Os novos detalhes da empresa.
-     * @return A empresa atualizada, ou null se não encontrada.
-     */
-    public Empresa update(Long id, Empresa empresaDetails) {
-        Optional<Empresa> optionalEmpresa = empresaRepository.findById(id);
-        if (optionalEmpresa.isPresent()) {
-            Empresa empresa = optionalEmpresa.get();
-            empresa.setNome(empresaDetails.getNome());
-            empresa.setCnpj(empresaDetails.getCnpj());
-            // Nota: Atualizar funcionários diretamente aqui pode ser complexo devido ao relacionamento bidirecional
-            // e ao carregamento lazy. Geralmente, funcionários são atualizados via seus próprios endpoints.
-            return empresaRepository.save(empresa);
-        } else {
-            // Lançar uma exceção personalizada seria uma prática melhor em um ambiente de produção
-            return null;
+    public void deletar(Long id) {
+        if(!empresaRepository.existsById(id)){
+            throw new RuntimeException("Empresa não encontrada com o id " + id);
         }
+        empresaRepository.deleteById(id);
     }
 }

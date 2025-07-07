@@ -1,39 +1,24 @@
-package com.suaempresa.seuprojetoapi.dto;
+// src/main/java/com/example/as_poo/model/Empresa.java
+package com.example.as_poo.model;
 
-import com.suaempresa.seuprojetoapi.model.Empresa;
-import com.suaempresa.seuprojetoapi.model.Funcionario;
+import com.fasterxml.jackson.annotation.JsonManagedReference;
+import jakarta.persistence.*;
+import java.util.ArrayList;
+import java.util.List;
 
-import java.util.Set;
-import java.util.stream.Collectors;
+@Entity
+public class Empresa {
 
-/**
- * Data Transfer Object (DTO) para a entidade Empresa.
- * Usado para controlar a saída de dados da API, evitando referências circulares
- * e expondo apenas os dados necessários.
- */
-public class EmpresaDTO {
+    @Id
+    @GeneratedValue(strategy = GenerationType.AUTO)
     private Long id;
+
     private String nome;
     private String cnpj;
-    // Para evitar loops de referência bidirecionais e carregar apenas o necessário,
-    // a lista de funcionários é representada por DTOs de funcionários.
-    private Set<FuncionarioDTO> funcionarios;
 
-    /**
-     * Construtor que mapeia uma entidade Empresa para um EmpresaDTO.
-     * @param empresa A entidade Empresa a ser mapeada.
-     */
-    public EmpresaDTO(Empresa empresa) {
-        this.id = empresa.getId();
-        this.nome = empresa.getNome();
-        this.cnpj = empresa.getCnpj();
-        // Mapeia a coleção de Funcionario para FuncionarioDTO
-        if (empresa.getFuncionarios() != null) {
-            this.funcionarios = empresa.getFuncionarios().stream()
-                    .map(FuncionarioDTO::new) // Cria um FuncionarioDTO para cada Funcionario
-                    .collect(Collectors.toSet());
-        }
-    }
+    @OneToMany(mappedBy = "empresa", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    @JsonManagedReference
+    private List<Funcionario> funcionarios = new ArrayList<>();
 
     // Getters e Setters
     public Long getId() {
@@ -60,11 +45,11 @@ public class EmpresaDTO {
         this.cnpj = cnpj;
     }
 
-    public Set<FuncionarioDTO> getFuncionarios() {
+    public List<Funcionario> getFuncionarios() {
         return funcionarios;
     }
 
-    public void setFuncionarios(Set<FuncionarioDTO> funcionarios) {
+    public void setFuncionarios(List<Funcionario> funcionarios) {
         this.funcionarios = funcionarios;
     }
 }

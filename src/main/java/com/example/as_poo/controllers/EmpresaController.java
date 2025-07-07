@@ -1,99 +1,83 @@
+// src/main/java/com/example/as_poo/controller/EmpresaController.java
 package com.example.as_poo.controllers;
 
+import com.example.as_poo.dto.EmpresaDTO;
+import com.example.as_poo.dto.FuncionarioDTO;
 import com.example.as_poo.model.Empresa;
-import com.suaempresa.seuprojetoapi.service.EmpresaService;
-import com.suaempresa.seuprojetoapi.dto.EmpresaDTO;
+import com.example.as_poo.service.EmpresaService;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
+import java.net.URI;
 import java.util.List;
-import java.util.Optional;
 import java.util.stream.Collectors;
 
-/**
- * Controlador REST para a entidade Empresa.
- * Define os endpoints para operações CRUD de Empresa.
- */
-@RestController // Marca a classe como um controlador REST
-@RequestMapping("/empresas") // Define o caminho base para os endpoints deste controlador
+@RestController
+@RequestMapping("/empresas")
 public class EmpresaController {
 
-    @Autowired // Injeta uma instância de EmpresaService
+    @Autowired
     private EmpresaService empresaService;
 
-    /**
-     * GET /empresas
-     * Retorna uma lista de todas as empresas.
-     * @return ResponseEntity com a lista de EmpresaDTOs e status HTTP 200 OK.
-     */
-    @GetMapping
-    public ResponseEntity<List<EmpresaDTO>> getAllEmpresas() {
-        List<Empresa> empresas = empresaService.findAll();
-        // Converte a lista de entidades Empresa para uma lista de EmpresaDTOs
-        List<EmpresaDTO> empresaDTOs = empresas.stream()
-                .map(EmpresaDTO::new) // Usa o construtor do DTO para mapeamento
-                .collect(Collectors.toList());
-        return ResponseEntity.ok(empresaDTOs);
+    // Método para converter Entidade para DTO
+    private EmpresaDTO toDTO(Empresa empresa) {
+        EmpresaDTO dto = new EmpresaDTO();
+        dto.setId(empresa.getId());
+        dto.setNome(empresa.getNome());
+        dto.setCnpj(empresa.getCnpj());
+        if (empresa.getFuncionarios() != null) {
+            dto.setFuncionarios(empresa.getFuncionarios().stream().map(func -> {
+                FuncionarioDTO funcDto = new FuncionarioDTO();
+                funcDto.setId(func.getId());
+                funcDto.setNome(func.getNome());
+                funcDto.setCargo(func.getCargo());
+                return funcDto;
+            }).collect(Collectors.toList()));
+        }
+        return dto;
     }
 
-    /**
-     * GET /empresas/{id}
-     * Retorna uma empresa específica pelo seu ID.
-     * @param id O ID da empresa.
-     * @return ResponseEntity com o EmpresaDTO e status HTTP 200 OK, ou 404 Not Found se não encontrada.
-     */
+    @GetMapping
+    public ResponseEntity<List<EmpresaDTO>> listarTodas() {
+        List<EmpresaDTO> list = empresaService.listarTodas().stream()
+                .map(this::toDTO)
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(list);
+    }
+
     @GetMapping("/{id}")
-    public ResponseEntity<EmpresaDTO> getEmpresaById(@PathVariable Long id) {
-        Optional<Empresa> empresa = empresaService.findById(id);
-        // Mapeia o Optional para um ResponseEntity
-        return empresa.map(e -> ResponseEntity.ok(new EmpresaDTO(e)))
+    public ResponseEntity<EmpresaDTO> buscarPorId(@PathVariable Long id) {
+        return empresaService.buscarPorId(id)
+                .map(empresa -> ResponseEntity.ok(toDTO(empresa)))
                 .orElse(ResponseEntity.notFound().build());
     }
 
-    /**
-     * POST /empresas
-     * Cria uma nova empresa.
-     * @param empresa A entidade Empresa a ser criada (recebida do corpo da requisição).
-     * @return ResponseEntity com o EmpresaDTO da empresa criada e status HTTP 201 Created.
-     */
     @PostMapping
-    public ResponseEntity<EmpresaDTO> createEmpresa(@RequestBody Empresa empresa) {
-        Empresa savedEmpresa = empresaService.save(empresa);
-        return ResponseEntity.status(HttpStatus.CREATED).body(new EmpresaDTO(savedEmpresa));
+    public ResponseEntity<Empresa> criar(@RequestBody Empresa empresa) {
+        Empresa novaEmpresa = empresaService.salvar(empresa);
+        URI location = ServletUriComponentsBuilder.fromCurrentRequest().path("/{id}")
+                .buildAndExpand(novaEmpresa.getId()).toUri();
+        return ResponseEntity.created(location).body(novaEmpresa);
     }
 
-    /**
-     * PUT /empresas/{id}
-     * Atualiza uma empresa existente.
-     * @param id O ID da empresa a ser atualizada.
-     * @param empresaDetails A entidade Empresa com os detalhes atualizados.
-     * @return ResponseEntity com o EmpresaDTO da empresa atualizada e status HTTP 200 OK, ou 404 Not Found se não encontrada.
-     */
     @PutMapping("/{id}")
-    public ResponseEntity<EmpresaDTO> updateEmpresa(@PathVariable Long id, @RequestBody Empresa empresaDetails) {
-        Empresa updatedEmpresa = empresaService.update(id, empresaDetails);
-        if (updatedEmpresa != null) {
-            return ResponseEntity.ok(new EmpresaDTO(updatedEmpresa));
-        } else {
+    public ResponseEntity<Empresa> atualizar(@PathVariable Long id, @RequestBody Empresa empresa) {
+        try {
+            Empresa empresaAtualizada = empresaService.atualizar(id, empresa);
+            return ResponseEntity.ok(empresaAtualizada);
+        } catch (RuntimeException e) {
             return ResponseEntity.notFound().build();
         }
     }
 
-    /**
-     * DELETE /empresas/{id}
-     * Deleta uma empresa pelo seu ID.
-     * @param id O ID da empresa a ser deletada.
-     * @return ResponseEntity com status HTTP 204 No Content se deletada com sucesso, ou 404 Not Found se não encontrada.
-     */
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteEmpresa(@PathVariable Long id) {
-        Optional<Empresa> empresa = empresaService.findById(id);
-        if (empresa.isPresent()) {
-            empresaService.deleteById(id);
-            return ResponseEntity.noContent().build(); // 204 No Content para deleção bem-sucedida
-        } else {
+    public ResponseEntity<Void> deletar(@PathVariable Long id) {
+        try {
+            empresaService.deletar(id);
+            return ResponseEntity.noContent().build();
+        } catch (RuntimeException e){
             return ResponseEntity.notFound().build();
         }
     }
